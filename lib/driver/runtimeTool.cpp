@@ -452,9 +452,8 @@ int Tool(struct DriverToolOptions &Opt) noexcept {
     if (Opt.Args.value().empty()) {
       // Check if module has any exported functions
       auto Functions = VM.getFunctionList();
-      bool HasExportedFunctions = !Functions.empty();
 
-      if (!HasExportedFunctions) {
+      if (Functions.empty()) {
         spdlog::info("Module instantiated successfully (no _start or exported "
                      "functions).");
         return EXIT_SUCCESS;
