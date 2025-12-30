@@ -471,7 +471,6 @@ int Tool(struct DriverToolOptions &Opt) noexcept {
           "A function name is required when reactor mode is enabled.\n"sv);
       return EXIT_FAILURE;
     }
-
     const auto &FuncName = Opt.Args.value().front();
 
     if (VM.holdsModule()) {
