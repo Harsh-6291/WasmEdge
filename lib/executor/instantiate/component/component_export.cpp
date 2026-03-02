@@ -4,6 +4,7 @@
 #include "executor/executor.h"
 
 #include "common/errinfo.h"
+#include "common/fmt_component.h"
 #include "common/spdlog.h"
 
 #include <string_view>

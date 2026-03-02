@@ -1,11 +1,13 @@
 #include "validator/component_context.h"
+#include "common/fmt_component.h"
 
 namespace WasmEdge {
 namespace Validator {
 
 bool ComponentContext::Context::AddImportedName(
-    const ComponentName &Name) noexcept {
-  switch (Name.getKind()) {
+    const AST::Component::ComponentName &Name) noexcept {
+  using namespace AST::Component;
+  switch (Name.Kind) {
   case ComponentNameKind::Constructor:
   case ComponentNameKind::Method:
   case ComponentNameKind::Static:
@@ -25,9 +27,9 @@ bool ComponentContext::Context::AddImportedName(
   };
 
   // Handle the Constructor case separately.
-  if (Name.getKind() == ComponentNameKind::Constructor) {
+  if (Name.Kind == ComponentNameKind::Constructor) {
     std::string LowerCase = toLowerString(Name.getOriginalName());
-    std::string Label = std::string(Name.getNoTagName());
+    std::string Label = std::string(Name.NoTagName);
     // check conflict with existing constructors
     if (ImportedNames.count(LowerCase)) {
       return false;
@@ -47,10 +49,9 @@ bool ComponentContext::Context::AddImportedName(
   }
 
   // For case 2, L and L.L is not strongly-unique together.
-  std::string Normal = std::string(Name.getNoTagName());
+  std::string Normal = std::string(Name.NoTagName);
   std::string UniForm = toLowerString(Normal);
-  std::string LdL =
-      std::string(Name.getNoTagName()) + "." + std::string(Name.getNoTagName());
+  std::string LdL = Normal + "." + Normal;
 
   if (ImportedNames.count(LdL)) {
     return false;

@@ -4,8 +4,8 @@
 #pragma once
 
 #include "ast/component/component.h"
+#include "ast/component/component_name.h"
 #include "ast/module.h"
-#include "validator/component_name.h"
 
 #include <deque>
 #include <optional>
@@ -57,7 +57,7 @@ public:
       return CoreSortIndexSizes[static_cast<uint32_t>(ST)];
     }
 
-    bool AddImportedName(const ComponentName &Name) noexcept;
+    bool AddImportedName(const AST::Component::ComponentName &Name) noexcept;
   };
 
   void reset() noexcept { CompCtxs.clear(); }

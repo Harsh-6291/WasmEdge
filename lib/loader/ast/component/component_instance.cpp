@@ -26,7 +26,9 @@ Expect<void> Loader::loadCoreInstance(AST::Component::CoreInstance &Instance) {
     };
     // core:instantiatearg ::= n:<core:name> 0x12 i:<instanceidx>
     //                       => (with n (instance i))
-    EXPECTED_TRY(Arg.getName(), FMgr.readName().map_error(ReportArgError));
+    EXPECTED_TRY(std::string_view Name,
+                 FMgr.readName().map_error(ReportArgError));
+    Arg.getName() = AST::Component::ComponentName(Name);
     EXPECTED_TRY(uint8_t B, FMgr.readByte().map_error(ReportArgError));
     if (B != 0x12U) {
       return ReportArgError(ErrCode::Value::MalformedCoreInstance);
@@ -84,10 +86,12 @@ Expect<void> Loader::loadInstance(AST::Component::Instance &Instance) {
       [this](AST::Component::InstantiateArg<AST::Component::SortIndex> &Arg)
       -> Expect<void> {
     // instantiatearg ::= n:<string> si:<sortidx> => (with n si)
-    EXPECTED_TRY(Arg.getName(), FMgr.readName().map_error([this](auto E) {
-      return logLoadError(E, FMgr.getLastOffset(),
-                          ASTNodeAttr::Comp_InstanceArg);
-    }));
+    EXPECTED_TRY(std::string_view Name,
+                 FMgr.readName().map_error([this](auto E) {
+                   return logLoadError(E, FMgr.getLastOffset(),
+                                       ASTNodeAttr::Comp_InstanceArg);
+                 }));
+    Arg.getName() = AST::Component::ComponentName(Name);
     return loadSortIndex(Arg.getIndex()).map_error([](auto E) {
       spdlog::error(ErrInfo::InfoAST(ASTNodeAttr::Comp_InstanceArg));
       return E;

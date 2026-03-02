@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2019-2024 Second State INC
 
+#include "ast/component/component_name.h"
 #include "common/errinfo.h"
+#include "common/fmt_component.h"
 #include "common/spdlog.h"
-#include "validator/component_name.h"
 #include "validator/validator.h"
 
 #include <variant>
@@ -469,7 +470,7 @@ Expect<void> Validator::validate(const AST::Component::Alias &Alias) noexcept {
     if (Sort.isCore()) {
       spdlog::error(ErrCode::Value::InvalidTypeReference);
       spdlog::error("    Alias export: Mapping an export '{}' to core:sort"sv,
-                    Name);
+                    Name.getOriginalName());
       return Unexpect(ErrCode::Value::InvalidTypeReference);
     }
 
@@ -740,61 +741,59 @@ Validator::validate(const AST::Component::Canonical &Canon) noexcept {
   }
 }
 
+Expect<void> Validator::validateComponentName(
+    const AST::Component::ComponentName &CompName) noexcept {
+  if (CompName.Kind == AST::Component::ComponentNameKind::InterfaceType) {
+    // Validate semver
+    std::string_view V = CompName.Detail.Interface.Version;
+    if (!V.empty()) {
+      size_t DotCount =
+          static_cast<size_t>(std::count(V.begin(), V.end(), '.'));
+      if (DotCount < 2) {
+        spdlog::error("    ComponentName: Invalid semver format '{}'"sv, V);
+        return Unexpect(ErrCode::Value::MalformedName);
+      }
+    }
+  } else if (CompName.Kind == AST::Component::ComponentNameKind::Hash) {
+    // Validate hashname
+    std::string_view H = CompName.HashStr;
+    if (H.empty()) {
+      spdlog::error("    ComponentName: Empty hash value"sv);
+      return Unexpect(ErrCode::Value::MalformedName);
+    }
+    // Very basic hex validation
+    for (char c : H) {
+      if (!std::isxdigit(c)) {
+        spdlog::error("    ComponentName: Invalid hex character in hash '{}'"sv,
+                      H);
+        return Unexpect(ErrCode::Value::MalformedName);
+      }
+    }
+  }
+
+  // Return immediately, as parsing and validation of the base name structure is
+  // now handled by the ComponentName constructor itself.
+  if (CompName.Kind == AST::Component::ComponentNameKind::Invalid) {
+    spdlog::error("    ComponentName: Invalid base name '{}'"sv,
+                  CompName.OriName);
+    return Unexpect(ErrCode::Value::MalformedName);
+  }
+  return {};
+}
+
 Expect<void> Validator::validate(const AST::Component::Import &Im) noexcept {
   EXPECTED_TRY(validate(Im.getDesc()).map_error([](auto E) {
     spdlog::error(ErrInfo::InfoAST(ASTNodeAttr::Comp_Import));
     return E;
   }));
 
-  ComponentName CName(Im.getName());
-  switch (CName.getKind()) {
-  case ComponentNameKind::InterfaceType:
-  case ComponentNameKind::Label:
-    break;
-  case ComponentNameKind::Invalid:
-    spdlog::error(ErrCode::Value::ComponentNotImplValidator);
-    spdlog::error("    Import: Invalid import name"sv);
-    spdlog::error(ErrInfo::InfoAST(ASTNodeAttr::Comp_Import));
-    return Unexpect(ErrCode::Value::ComponentNotImplValidator);
-  default:
-    spdlog::error(ErrCode::Value::ComponentNotImplValidator);
-    spdlog::error("    Import: Import name kind not supported yet"sv);
-    spdlog::error(ErrInfo::InfoAST(ASTNodeAttr::Comp_Import));
-    return Unexpect(ErrCode::Value::ComponentNotImplValidator);
-  }
-  // TODO: Validation requires that annotated plainnames only occur on func
-  // imports or exports and that the first label of a [constructor],
-  // [method] or [static] matches the plainname of a preceding resource
-  // import or export, respectively, in the same scope (component, component
-  // type or instance type).
+  EXPECTED_TRY(validateComponentName(Im.getName()));
 
-  // TODO: Validation of [constructor] names requires that the func returns
-  // a (result (own $R)), where $R is the resource labeled r.
-
-  // TODO: Validation of [method] names requires the first parameter of the
-  // function to be (param "self" (borrow $R)), where $R is the resource
-  // labeled r.
-
-  // TODO: Validation of [method] and [static] names ensures that all field
-  // names are disjoint.
-  switch (CName.getKind()) {
-  case ComponentNameKind::Constructor:
-  case ComponentNameKind::Method:
-  case ComponentNameKind::Static:
-  case ComponentNameKind::InterfaceType:
-  case ComponentNameKind::Label:
-    if (!CompCtx.AddImportedName(CName)) {
-      spdlog::error(ErrCode::Value::ComponentDuplicateName);
-      spdlog::error("    Import: Duplicate import name"sv);
-      spdlog::error(ErrInfo::InfoAST(ASTNodeAttr::Comp_Import));
-      return Unexpect(ErrCode::Value::ComponentDuplicateName);
-    }
-    break;
-  default:
-    spdlog::error(ErrCode::Value::ComponentNotImplValidator);
-    spdlog::error("    Import: Name is not resolved"sv);
+  if (!CompCtx.AddImportedName(Im.getName())) {
+    spdlog::error(ErrCode::Value::ComponentDuplicateName);
+    spdlog::error("    Import: Duplicate import name"sv);
     spdlog::error(ErrInfo::InfoAST(ASTNodeAttr::Comp_Import));
-    return Unexpect(ErrCode::Value::ComponentNotImplValidator);
+    return Unexpect(ErrCode::Value::ComponentDuplicateName);
   }
 
   return {};
@@ -851,8 +850,8 @@ Validator::validate(const AST::Component::ExternDesc &Desc) noexcept {
           uint32_t InstIdx = CompCtx.getSortIndexSize(
                                  AST::Component::Sort::SortType::Instance) -
                              1;
-          CompCtx.addComponentInstanceExport(InstIdx, Exp.getName(),
-                                             Exp.getExternDesc());
+          CompCtx.addComponentInstanceExport(
+              InstIdx, Exp.getName().getOriginalName(), Exp.getExternDesc());
         } else {
           assumingUnreachable();
         }

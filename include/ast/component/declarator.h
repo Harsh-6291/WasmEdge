@@ -112,13 +112,13 @@ private:
 /// Base class of Component::ImportDecl and Component::ExportDecl node.
 class ExternDecl {
 public:
-  std::string_view getName() const noexcept { return Name; }
-  std::string &getName() noexcept { return Name; }
+  const ComponentName &getName() const noexcept { return Name; }
+  ComponentName &getName() noexcept { return Name; }
   const ExternDesc &getExternDesc() const noexcept { return Desc; }
   ExternDesc &getExternDesc() noexcept { return Desc; }
 
 private:
-  std::string Name;
+  ComponentName Name;
   ExternDesc Desc;
 };
 

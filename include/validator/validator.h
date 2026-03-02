@@ -16,6 +16,7 @@
 
 #include "ast/module.h"
 #include "common/configure.h"
+#include "common/fmt_component.h"
 #include "validator/component_context.h"
 #include "validator/formchecker.h"
 
@@ -112,6 +113,9 @@ private:
   // Validate component descs
   // Expect<void> validate(const AST::Component::CoreImportDesc &Desc) noexcept;
   Expect<void> validate(const AST::Component::ExternDesc &Desc) noexcept;
+  // validate component name
+  Expect<void>
+  validateComponentName(const AST::Component::ComponentName &CompName) noexcept;
   // decls
   // Expect<void> validate(const AST::Component::CoreImportDecl &Decl) noexcept;
   // Expect<void> validate(const AST::Component::CoreExportDecl &Decl) noexcept;
